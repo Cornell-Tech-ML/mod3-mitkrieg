@@ -45,9 +45,10 @@ def index_to_position(index: Index, strides: Strides) -> int:
         Position in storage
 
     """
-    assert len(index) == len(strides)
-    multiplied = zipWith(mul)(index, strides)
-    return int(sum(list(multiplied)))
+    pos = 0
+    for i, stride in zip(index, strides):
+        pos += i * stride
+    return pos
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -65,7 +66,7 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     """
     for i, dim in enumerate(shape):
         move = ordinal % dim
-        ordinal //= dim
+        ordinal = int(ordinal / dim)
         out_index[i] = move
 
 
