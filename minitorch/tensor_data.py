@@ -46,8 +46,8 @@ def index_to_position(index: Index, strides: Strides) -> int:
 
     """
     pos = 0
-    for i, stride in zip(index, strides):
-        pos += i * stride
+    for i in range(len(index)):
+        pos += index[i] * strides[i]
     return pos
 
 
@@ -133,9 +133,9 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
         else:
             c_rev[i] = max(a_rev[i], b_rev[i])
             if a_rev[i] != c_rev[i] and a_rev[i] != 1:
-                raise IndexingError(f'Broadcast failure: {a} {b}')
+                raise IndexingError(f"Broadcast failure {a} {b}")
             if b_rev[i] != c_rev[i] and b_rev[i] != 1:
-                raise IndexingError(f'Broadcast failure: {a} {b}')
+                raise IndexingError(f"Broadcast failure {a} {b}")
     return tuple(reversed(c_rev))
 
 

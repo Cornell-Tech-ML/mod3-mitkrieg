@@ -1,7 +1,7 @@
 """Collection of the core mathematical operators used throughout the code base."""
 
 import math
-from typing import Callable, Iterable, Generator
+from typing import Callable, Iterable, Generator, Sequence
 
 
 # Mathematical functions:
@@ -174,7 +174,7 @@ def relu(a: float) -> float:
         float: f(a) where f(x) = max(0,x)
 
     """
-    return max(0.0, a)
+    return a if a > 0 else 0.0
 
 
 # - log
@@ -190,7 +190,7 @@ def log(a: float) -> float:
         float: f(a) where f(x) = ln(x)
 
     """
-    return math.log(a, math.e)
+    return math.log(a)
 
 
 # - exp
@@ -206,7 +206,7 @@ def exp(a: float) -> float:
         float: f(a) where f(x) = e^x
 
     """
-    return math.pow(math.e, a)
+    return math.exp(a)
 
 
 # - inv
@@ -415,7 +415,7 @@ def sum(ls: list[float]) -> float:
 
 
 # - prod: take the product of lists
-def prod(ls: list[float]) -> float:
+def prod(ls: list[float] | Sequence[float]) -> float:
     """Calculate the product of all elements in a list using `reduce`
 
     Args:
