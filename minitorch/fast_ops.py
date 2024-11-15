@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from typing import Callable, Optional
 
     from .tensor import Tensor
-    from .tensor_data import Index, Shape, Storage, Strides
+    from .tensor_data import Shape, Storage, Strides
 
 # TIP: Use `NUMBA_DISABLE_JIT=1 pytest tests/ -m task3_1` to run these tests without JIT.
 
@@ -30,6 +30,7 @@ Fn = TypeVar("Fn")
 
 
 def njit(fn: Fn, **kwargs: Any) -> Fn:
+    """Just in time complies given function"""
     return _njit(inline="always", **kwargs)(fn)  # type: ignore
 
 
@@ -170,20 +171,18 @@ def tensor_map(
     ) -> None:
         # TODO: Implement for Task 3.1.
         # if stride-aligned, avoid indexing
-        if np.array_equal(in_shape, out_shape) and np.array_equal(in_strides, out_strides):
-            for i in prange(out.size):
-                out[i] = fn(in_storage[i])
+        out_size = np.prod(out_shape)
+        if np.array_equal(in_shape, out_shape) and np.array_equal(in_strides, out_strides): 
+            for i in prange(out_size):
+                out[i]=fn(in_storage[i])
         else:
-            for i in prange(np.prod(out_shape)):
-                out_idx = np.zeros(len(out_shape), dtype=np.int32)
-                in_idx = np.zeros(len(in_shape), dtype=np.int32)
-                to_index(i, out_shape, out_idx)
-                broadcast_index(out_idx, out_shape, in_shape, in_idx)
-
-                in_pos = index_to_position(in_idx, in_strides)
-                out_pos = index_to_position(out_idx, out_strides)
-
-                out[out_pos] = fn(in_storage[in_pos])
+            out_index = np.zeros(len(out_shape), dtype=np.int32)
+            in_index = np.zeros(len(in_shape), dtype=np.int32)
+            for i in prange(out_size):
+                to_index(i, out_shape, out_index)
+                broadcast_index(out_index, out_shape, in_shape, in_index)
+                pos = index_to_position(in_index, in_strides)
+                out[i] = fn(in_storage[pos])
 
     return njit(_map, parallel=True)  # type: ignore
 
@@ -225,24 +224,21 @@ def tensor_zip(
         # TODO: Implement for Task 3.1.
 
         # if stride-aligned, avoid indexing
-        if np.array_equal(a_shape, out_shape) and np.array_equal(a_strides, out_strides) and np.array_equal(b_shape, out_shape) and np.array_equal(b_strides, out_strides):
-            for i in prange(out.size):
+        if np.array_equal(a_strides, out_strides) and np.array_equal(b_strides, out_strides) and np.array_equal(a_shape, out_shape) and np.array_equal(b_shape, out_shape):
+            for i in prange(len(out)):
                 out[i] = fn(a_storage[i], b_storage[i])
         else:
-            out_idx = np.zeros(len(out_shape), dtype=np.int32)
             a_idx = np.zeros(len(a_shape), dtype=np.int32)
             b_idx = np.zeros(len(b_shape), dtype=np.int32)
-
-            for i in prange(np.prod(out_shape)):
+            out_idx = np.zeros(len(out_shape), dtype=np.int32)
+            for i in prange(len(out)):
                 to_index(i, out_shape, out_idx)
                 broadcast_index(out_idx, out_shape, a_shape, a_idx)
                 broadcast_index(out_idx, out_shape, b_shape, b_idx)
 
                 a_pos = index_to_position(a_idx, a_strides)
                 b_pos = index_to_position(b_idx, b_strides)
-                out_pos = index_to_position(out_idx, out_strides)
-
-                out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
+                out[i] = fn(a_storage[a_pos], b_storage[b_pos])
 
     return njit(_zip, parallel=True)  # type: ignore
 
@@ -278,32 +274,26 @@ def tensor_reduce(
         reduce_dim: int,
     ) -> None:
         # TODO: Implement for Task 3.1.
+        start = out[0]
 
-        # stride aligned
-        if np.array_equal(a_shape, out_shape) and np.array_equal(a_strides, out_strides):
-            for i in prange(out.size):
-                out[i] = fn(a_storage[i], reduce_dim)
-        else:
-            out_idx = np.zeros(len(out_shape), dtype=np.int32)
+        dim = a_shape[reduce_dim]
 
-            for i in prange(np.prod(out_shape)):
-                to_index(i, out_shape, out_idx)
+        out_idx = np.zeros(len(out_shape), dtype=np.int32)
+        a_idx = np.zeros(len(a_shape), dtype=np.int32)
 
-                output = 0
+        for i in prange(np.prod(out_shape)):
+            to_index(i, out_shape, out_idx)
+            accumulator = start
+            for j in range(dim):
+                
+                for k in range(len(out_shape)):
+                    a_idx[k] = out_idx[k]
+                a_idx[reduce_dim] = j
 
-                for el in prange(a_shape[reduce_dim]):
-                    a_idx = out_idx.copy()
-                    a_idx[reduce_dim] = el
+                a_pos = index_to_position(a_idx, a_strides)
+                accumulator = fn(accumulator, a_storage[a_pos])
 
-                    position = index_to_position(a_idx, a_strides)
-
-                    if el == 0:
-                        output = a_storage[position]
-                    else:
-                        output = fn(output, a_storage[position])
-
-                position = index_to_position(out_idx, out_strides)
-                out[position] = output
+            out[i] = accumulator
 
     return njit(_reduce, parallel=True)  # type: ignore
 
@@ -355,7 +345,30 @@ def _tensor_matrix_multiply(
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
 
     # TODO: Implement for Task 3.2.
-    raise NotImplementedError("Need to implement for Task 3.2")
+    assert a_shape[-1] == b_shape[-2]
+
+    slice_2d = out_shape[-1] * out_shape[-2]
+
+    for i in prange(len(out)):
+        # get each position
+        batch = i // slice_2d
+        row = (i % slice_2d) // out_shape[-1]
+        col = i % out_shape[-1]
+
+        # find where a and b begin
+        a = batch * a_batch_stride + row * a_strides[1]
+        b = batch * b_batch_stride + col * b_strides[2]
+
+        # multipy and accumulate to perform matmul
+        tmp = 0
+        for position in range(a_shape[-1]):
+            tmp += (
+                a_storage[a + position * a_strides[2]] *
+                b_storage[b + position * b_strides[1]]
+            )
+        out_pos = batch * out_strides[0] + row * out_strides[1] + col * out_strides[2] 
+        out[out_pos] = tmp
+
 
 
 tensor_matrix_multiply = njit(_tensor_matrix_multiply, parallel=True)
