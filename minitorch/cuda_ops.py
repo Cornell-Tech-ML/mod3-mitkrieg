@@ -501,7 +501,7 @@ def _tensor_matrix_multiply(
         # row i must be within outshape as col start + pj must be within the last dim
         if i < out_shape[1] and start + pj < a_shape[2] and pi:
             a_pos = (
-                batch * a_batch_stride + i * a_strides[1] + (start + pi) * a_strides[2]
+                batch * a_batch_stride + i * a_strides[1] + (start + pj) * a_strides[2]
             )
             a_shared[pi, pj] = a_storage[a_pos]
         else:
@@ -510,7 +510,7 @@ def _tensor_matrix_multiply(
         if start + pi < a_shape[2] and j < out_shape[2]:
             b_pos = (
                 batch * b_batch_stride
-                + (start + pj) * b_strides[1]
+                + (start + pi) * b_strides[1]
                 + b_shape[2] * b_strides[2]
             )
             b_shared[pi, pj] = b_storage[b_pos]
