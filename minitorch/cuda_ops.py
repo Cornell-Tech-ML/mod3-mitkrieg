@@ -519,7 +519,9 @@ def _tensor_matrix_multiply(
                 accumulator += a_shared[pi, k] * b_shared[k, pj]
 
     if i < out_shape[1] and j < out_shape[2]:
-        out[batch * out_strides[0] + i * out_strides[1] + j * out_strides[2]] = sum
+        out[batch * out_strides[0] + i * out_strides[1] + j * out_strides[2]] = (
+            accumulator
+        )
 
 
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
