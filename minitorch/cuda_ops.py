@@ -499,7 +499,7 @@ def _tensor_matrix_multiply(
     for start in range(0, a_shape[2], BLOCK_DIM):
         #    a) Copy into shared memory for a matrix.
         # row i must be within outshape as col start + pj must be within the last dim
-        if i < out_shape[1] and start + pj < a_shape[2] and pi:
+        if i < out_shape[1] and start + pj < a_shape[2]:
             a_pos = (
                 batch * a_batch_stride + i * a_strides[1] + (start + pj) * a_strides[2]
             )
@@ -511,14 +511,14 @@ def _tensor_matrix_multiply(
             b_pos = (
                 batch * b_batch_stride
                 + (start + pi) * b_strides[1]
-                + b_shape[2] * b_strides[2]
+                + j * b_strides[2]
             )
             b_shared[pi, pj] = b_storage[b_pos]
         else:
             b_shared[pi, pj] = 0.
         #    c) Compute the dot produce for position c[i, j]
         cuda.syncthreads()
-        for k in range(0, BLOCK_DIM):
+        for k in range(BLOCK_DIM):
             if k + start < a_shape[2]:
                 accumulator += a_shared[pi, k] * b_shared[k, pj]
 
