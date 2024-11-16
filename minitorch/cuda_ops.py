@@ -285,14 +285,16 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
     # copy into cache
     if i < size:
         cache[pos] = a[i]
-        cuda.syncthreads()
+    else:
+        cache[pos] = 0.
+    cuda.syncthreads()
         # sum elements
-        mult = 1
-        while mult < BLOCK_DIM:
-            if pos % (2 * mult) == 0:
-                cache[pos] += cache[pos + mult]
-                cuda.syncthreads()
-            mult *= 2
+    mult = 1
+    while mult < BLOCK_DIM and pos + mult < BLOCK_DIM:
+        if pos % (2 * mult) == 0:
+            cache[pos] += cache[pos + mult]
+            cuda.syncthreads()
+        mult *= 2
 
     # sum to block for each block
     if pos == 0:
