@@ -518,10 +518,12 @@ def _tensor_matrix_multiply(
             b_shared[pi, pj] = 0.
         #    c) Compute the dot produce for position c[i, j]
         cuda.syncthreads()
+        
         for k in range(BLOCK_DIM):
             if k + start < a_shape[2]:
                 accumulator += a_shared[pi, k] * b_shared[k, pj]
 
+        cuda.syncthreads()
     if i < out_shape[1] and j < out_shape[2]:
         out[batch * out_strides[0] + i * out_strides[1] + j * out_strides[2]] = (
             accumulator
