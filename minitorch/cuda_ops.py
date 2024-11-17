@@ -507,7 +507,7 @@ def _tensor_matrix_multiply(
         else:
             a_shared[pi, pj] = 0.
         #    b) Copy into shared memory for b matrix
-        if start + pi < b_shape[2] and j < out_shape[2]:
+        if start + pi < b_shape[1] and j < out_shape[2]:
             b_pos = (
                 batch * b_batch_stride
                 + (start + pi) * b_strides[1]
