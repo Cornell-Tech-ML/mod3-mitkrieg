@@ -500,17 +500,20 @@ def _tensor_matrix_multiply(
     # Code Plan:
     # 1) Move across shared dimension by block dim.
     accumulator = 0.0
+
+    # Iterate over tiles of size BLOCK_DIM in shared memory
     for start in range(0, a_shape[2], BLOCK_DIM):
-        #    a) Copy into shared memory for a matrix.
-        # row i must be within outshape as col start + pj must be within the last dim
+        # a) Copy into shared memory for a matrix.
+        # Get position in a's storage but gaurd against out of bounds elements
         if i < out_shape[1] and start + pj < a_shape[2]:
             a_pos = (
                 batch * a_batch_stride + i * a_strides[1] + (start + pj) * a_strides[2]
             )
-            a_shared[pi, pj] = a_storage[a_pos]
+            a_shared[pi, pj] = a_storage[a_pos] #zero padding
         else:
             a_shared[pi, pj] = 0.
-        #    b) Copy into shared memory for b matrix
+        # b) Copy into shared memory for b matrix
+        # Get position in b's storage but gaurd against out of bounds elements
         if start + pi < b_shape[1] and j < out_shape[2]:
             b_pos = (
                 batch * b_batch_stride
@@ -519,15 +522,19 @@ def _tensor_matrix_multiply(
             )
             b_shared[pi, pj] = b_storage[b_pos]
         else:
-            b_shared[pi, pj] = 0.
-        #    c) Compute the dot produce for position c[i, j]
-        cuda.syncthreads()
-        
-        for k in range(BLOCK_DIM):
-            if k + start < a_shape[2]:
-                accumulator += a_shared[pi, k] * b_shared[k, pj]
+            b_shared[pi, pj] = 0. #zero padding
 
-        cuda.syncthreads()
+        cuda.syncthreads() # ensure all data has been copied over before starting compute
+
+        # c) Compute the dot produce for position c[i, j]
+        # multiplication inside of tile in shared memeory
+        for k in range(BLOCK_DIM):
+            if k + start < a_shape[2]: #check within bounds
+                accumulator += a_shared[pi, k] * b_shared[k, pj] #accumulate multiplications
+
+        cuda.syncthreads() #ensure all calculations have finished
+
+    # Write accumulated value to global
     if i < out_shape[1] and j < out_shape[2]:
         out[batch * out_strides[0] + i * out_strides[1] + j * out_strides[2]] = (
             accumulator

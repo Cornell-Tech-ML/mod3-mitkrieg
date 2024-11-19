@@ -31,6 +31,15 @@ The files that will be synced are:
 
         minitorch/tensor_data.py minitorch/tensor_functions.py minitorch/tensor_ops.py minitorch/operators.py minitorch/scalar.py minitorch/scalar_functions.py minitorch/module.py minitorch/autodiff.py minitorch/module.py project/run_manual.py project/run_scalar.py project/run_tensor.py minitorch/operators.py minitorch/module.py minitorch/autodiff.py minitorch/tensor.py minitorch/datasets.py minitorch/testing.py minitorch/optim.py
 
+## Matrix Multiplication Time comparison 
+| Size | Fast    | GPU     |
+|------|---------|---------|
+| 64   | 0.00368 | 0.00692 |
+| 128  | 0.01669 | 0.01602 |
+| 256  | 0.10438 | 0.05429 |
+| 512  | 1.22721 | 0.31066 |
+| 1024 | 7.97977 | 1.01288 |
+
 ## Output from project/parallel_check.py
 
 ```
@@ -406,8 +415,6 @@ Allocation hoisting:
 No allocation hoisting found
 None
 ```
-
-## Model training
 
 ## Model Training Logs
 
