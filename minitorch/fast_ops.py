@@ -169,6 +169,7 @@ def tensor_map(
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 3.1.
+
         # if stride-aligned, avoid indexing
         out_size = np.prod(out_shape)
         if np.array_equal(in_shape, out_shape) and np.array_equal(
@@ -176,6 +177,7 @@ def tensor_map(
         ):
             for i in prange(out_size):
                 out[i] = fn(in_storage[i])
+        # otherwise use broadcasting to index
         else:
             for i in prange(out_size):
                 out_idx = np.zeros(len(out_shape), dtype=np.int32)
